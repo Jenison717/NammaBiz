@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sys
+from threading import Lock
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlsplit
 
@@ -328,6 +329,22 @@ def create_app(db_path=None):
     from factory import create_platform_app
 
     return create_platform_app(legacy_app, db_path)
+
+
+class LazyWSGIApplication:
+    def __init__(self):
+        self._application = None
+        self._lock = Lock()
+
+    def __call__(self, environ, start_response):
+        if self._application is None:
+            with self._lock:
+                if self._application is None:
+                    self._application = create_app()
+        return self._application(environ, start_response)
+
+
+app = LazyWSGIApplication()
 
 
 if __name__ == "__main__":
