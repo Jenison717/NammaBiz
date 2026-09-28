@@ -1,0 +1,3 @@
+# The application code uses the Python standard library.
+# Gunicorn provides the production WSGI server used by Render.
+gunicorn

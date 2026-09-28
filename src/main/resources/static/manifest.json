@@ -1,0 +1,18 @@
+{
+  "name": "NammaBiz - Local B2B Network",
+  "short_name": "NammaBiz",
+  "description": "Find local suppliers, request quotes, and plan project budgets in Madurai.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f1e9",
+  "theme_color": "#0d2b29",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+.estimator-grid { display:grid; grid-template-columns:minmax(330px,.8fr) minmax(0,1.2fr); gap:18px; align-items:start; }
+.estimator-form,.estimate-result,.estimate-placeholder { border:1px solid var(--line); border-radius:7px; padding:24px; background:var(--white); }
+.estimator-form > p:not(.eyebrow),.estimate-placeholder > p:not(.eyebrow),.estimate-result > p:not(.eyebrow) { color:var(--muted); font-size:13px; }
+.mode-switch { display:grid; grid-template-columns:1fr 1fr; margin:-24px -24px 24px; border-bottom:1px solid var(--line); }
+.mode-switch a { min-height:48px; display:grid; place-items:center; color:var(--muted); font-weight:700; font-size:13px; }
+.mode-switch a.active { color:var(--green); box-shadow:inset 0 -3px var(--green); }
+.estimator-form form { display:grid; gap:12px; margin-top:20px; }
+.estimator-form label { display:grid; gap:5px; color:#42534e; font-size:12px; font-weight:700; }
+.estimator-form input,.estimator-form select { min-height:42px; border:1px solid #bdcac5; border-radius:5px; padding:8px 10px; color:var(--ink); background:white; }
+.estimator-form .button { justify-self:start; margin-top:4px; }
+.estimate-result { border-top:4px solid var(--green); }
+.estimate-result h2 { margin-bottom:3px; color:var(--green); font-size:34px; }
+.estimate-lines { margin:20px 0; border-top:1px solid var(--line); }
+.estimate-lines > div { display:flex; justify-content:space-between; gap:20px; padding:12px 0; border-bottom:1px solid var(--line); }
+.estimate-lines span { color:var(--muted); font-size:13px; }.estimate-lines strong { text-align:right; font-size:13px; }
+.estimate-note { border-left:3px solid var(--lime); padding-left:10px; }.estimate-copy { margin-top:18px; padding:12px; background:#edf4e9; color:#40514d !important; font-size:12px !important; }
+.estimate-placeholder { min-height:250px; background:#e6efe6; border-color:#cbdacb; }
+@media(max-width:850px){.estimator-grid{grid-template-columns:1fr}.estimate-placeholder{min-height:0}}@media(max-width:620px){.estimator-form,.estimate-result,.estimate-placeholder{padding:18px}.mode-switch{margin:-18px -18px 20px}.estimate-result h2{font-size:28px}.estimate-lines>div{display:block}.estimate-lines strong{display:block;text-align:left;margin-top:2px}}

@@ -1,0 +1,27 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Local runtime data and databases
+data/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# Local configuration and logs
+.env
+.env.*
+*.log
+
+# IDE and operating-system files
+.idea/
+.vscode/
+.classpath
+.project
+.settings/
+Thumbs.db
+.DS_Store
