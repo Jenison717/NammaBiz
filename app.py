@@ -6,10 +6,9 @@ import html
 import json
 import os
 import re
-import sqlite3
 import sys
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 ROOT = Path(__file__).resolve().parent
 TEMPLATES = ROOT / "src" / "main" / "resources" / "templates"
@@ -43,43 +42,52 @@ def pill(text, tone="muted"): return f'<span class="pill {tone}">{esc(text)}</sp
 
 
 class NammaBiz:
-    def __init__(self, db_path=DEFAULT_DB):
+    def __init__(self, db_path=DEFAULT_DB, initialize=False):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.setup()
-
-    def db(self):
-        connection = sqlite3.connect(self.db_path)
-        connection.row_factory = sqlite3.Row
-        return connection
+        if initialize:
+            self.setup()
 
     def setup(self):
-        db = self.db()
-        try:
-            db.executescript("""
-                CREATE TABLE IF NOT EXISTS businesses (id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, subcategory TEXT NOT NULL, location TEXT NOT NULL, description TEXT NOT NULL, buyer_types TEXT NOT NULL, products TEXT NOT NULL, services TEXT NOT NULL, phone TEXT NOT NULL, rating REAL NOT NULL, available INTEGER NOT NULL, wholesale INTEGER NOT NULL, verified INTEGER NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
-                CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY, business_id INTEGER NOT NULL, name TEXT NOT NULL, category TEXT NOT NULL, unit TEXT NOT NULL, price REAL NOT NULL, description TEXT NOT NULL, available INTEGER NOT NULL DEFAULT 1);
-                CREATE TABLE IF NOT EXISTS rfqs (id INTEGER PRIMARY KEY, business_id INTEGER NOT NULL, buyer_name TEXT NOT NULL, buyer_email TEXT NOT NULL, requirement TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'PENDING', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
-            """)
-            if not db.execute("SELECT COUNT(*) FROM businesses").fetchone()[0]:
-                db.executemany("INSERT INTO businesses (name,category,subcategory,location,description,buyer_types,products,services,phone,rating,available,wholesale,verified) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", SEED)
-                db.executemany("INSERT INTO products (business_id,name,category,unit,price,description) VALUES (?,?,?,?,?,?)", PRODUCTS)
-            db.commit()
-        finally:
-            db.close()
+        from extensions import db
+        from models import LegacyBusiness, LegacyProduct
+
+        from flask import current_app
+
+        if not LegacyBusiness.query.count() and current_app.config["SEED_SAMPLE_DATA"]:
+            for row in SEED:
+                db.session.add(LegacyBusiness(name=row[0], category=row[1], subcategory=row[2], location=row[3], description=row[4], buyer_types=row[5], products=row[6], services=row[7], phone=row[8], rating=row[9], available=row[10], wholesale=row[11], verified=row[12]))
+            for row in PRODUCTS:
+                db.session.add(LegacyProduct(business_id=row[0], name=row[1], category=row[2], unit=row[3], price=row[4], description=row[5]))
+            db.session.commit()
 
     def rows(self, sql, values=()):
-        db = self.db()
-        try: return db.execute(sql, values).fetchall()
-        finally: db.close()
+        from sqlalchemy import text
+        from extensions import db
+
+        statement, params = self._bind_positional(sql, values)
+        return db.session.execute(text(statement), params).mappings().all()
 
     def write(self, sql, values=()):
-        db = self.db()
-        try:
-            db.execute(sql, values)
-            db.commit()
-        finally:
-            db.close()
+        from sqlalchemy import text
+        from extensions import db
+
+        statement, params = self._bind_positional(sql, values)
+        db.session.execute(text(statement), params)
+        db.session.commit()
+
+    @staticmethod
+    def _bind_positional(sql, values):
+        index = 0
+
+        def replace(_match):
+            nonlocal index
+            name = f"value_{index}"
+            index += 1
+            return f":{name}"
+
+        statement = re.sub(r"\?", replace, sql)
+        return statement, {f"value_{i}": value for i, value in enumerate(values)}
 
     def search(self, query="", category="", available=False, verified=False):
         terms = re.findall(r"[a-z0-9]+", query.lower())
@@ -97,11 +105,27 @@ class NammaBiz:
     def layout(self, title, body, notice=""):
         base = (TEMPLATES / "layout.html").read_text(encoding="utf-8")
         toast = f'<div class="notice">{esc(notice)}</div>' if notice else ""
+        try:
+            from flask_wtf.csrf import generate_csrf
+
+            csrf_field = f'<input type="hidden" name="csrf_token" value="{esc(generate_csrf())}">'
+            body = re.sub(r'(<form\b[^>]*method=["\']post["\'][^>]*>)', rf'\1{csrf_field}', body, flags=re.IGNORECASE)
+        except RuntimeError:
+            pass
         return base.replace("{{title}}", esc(title)).replace("{{notice}}", toast).replace("{{body}}", body).encode()
 
     def nav(self, active=""):
         link = lambda url, name, key: f'<a class="{"active" if key == active else ""}" href="{url}">{name}</a>'
-        return f'<header class="topbar"><div class="shell nav"><a class="brand" href="/"><b>N</b><span>NammaBiz<small>LOCAL B2B NETWORK</small></span></a><nav>{link("/", "Discover", "discover")}{link("/categories", "Categories", "categories")}{link("/estimator", "Estimator", "estimator")}{link("/dashboard", "Supplier portal", "dashboard")}</nav><a class="button dark" href="/dashboard#add-supplier">List business</a></div></header>'
+        from flask_login import current_user
+
+        if current_user.is_authenticated:
+            dashboard_url = {"USER": "/user/dashboard", "CONTRACTOR": "/contractor/dashboard", "ADMIN": "/admin/dashboard"}[current_user.role]
+            account_links = f'<a href="{dashboard_url}">Dashboard</a><form method="post" action="/auth/logout"><button class="link-button">Sign out</button></form>'
+            join_link = ""
+        else:
+            account_links = link("/auth/login", "Sign in", "login")
+            join_link = '<a class="button dark" href="/auth/register">Join NammaBiz</a>'
+        return f'<header class="topbar"><div class="shell nav"><a class="brand" href="/"><b>N</b><span>NammaBiz<small>LOCAL SERVICES & SUPPLY</small></span></a><nav>{link("/", "Suppliers", "discover")}{link("/categories", "Categories", "categories")}{link("/services", "Services", "services")}{link("/estimator", "Estimator", "estimator")}{account_links}</nav>{join_link}</div></header>'
 
     def card(self, row):
         tags = pill("Available now", "success") if row["available"] else pill("Currently busy")
@@ -213,6 +237,7 @@ class NammaBiz:
         except ValueError: business_id = 0
         name, email, requirement = (first(form, key).strip() for key in ("buyer_name", "buyer_email", "requirement"))
         if not all((business_id, name, email, requirement)): return self.redirect("/search", "Please complete the RFQ form.")
+        if not self.rows("SELECT id FROM businesses WHERE id=?", (business_id,)): return self.redirect("/search", "That supplier could not be found.")
         if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email): return self.redirect(f"/business/{business_id}", "Enter a valid work email address.")
         if len(requirement) < 12: return self.redirect(f"/business/{business_id}", "Add a little more detail so the supplier can quote accurately.")
         self.write("INSERT INTO rfqs (business_id,buyer_name,buyer_email,requirement) VALUES (?,?,?,?)", (business_id, name, email, requirement))
@@ -257,7 +282,10 @@ class NammaBiz:
         if path == "/api/rfqs" and method == "GET": return self.json([dict(row) for row in self.rows("SELECT * FROM rfqs ORDER BY created_at DESC")])
         if path == "/api/rfqs" and method == "POST":
             response = self.post_rfq({key: [str(value)] for key, value in payload.items()})
-            return self.json({"created": response[0] == "302 Found"}, "201 Created")
+            location = dict(response[1]).get("Location", "")
+            notice = parse_qs(urlsplit(location).query).get("notice", [""])[0]
+            created = notice == "Your RFQ is in the supplier inbox."
+            return self.json({"created": created}, "201 Created" if created else "400 Bad Request")
         if re.fullmatch(r"/api/businesses/\d+/availability", path) and method == "POST":
             ident = int(path.split("/")[3]); value = payload.get("value", first(query, "value"))
             self.write("UPDATE businesses SET available=? WHERE id=?", (1 if str(value).lower() in {"1", "true"} else 0, ident))
@@ -295,7 +323,11 @@ class NammaBiz:
         return [payload]
 
 
-def create_app(db_path=DEFAULT_DB): return NammaBiz(db_path)
+def create_app(db_path=None):
+    legacy_app = NammaBiz(db_path or DEFAULT_DB)
+    from factory import create_platform_app
+
+    return create_platform_app(legacy_app, db_path)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}{% block title %}Payment #{{ payment.id }} | NammaBiz{% endblock %}{% block content %}<main class="shell page"><div class="page-head"><p class="eyebrow">PAYMENT RECORD</p><h1>Transaction {{ payment.transaction_id or 'not assigned' }}</h1></div><dl class="detail-list"><div><dt>Job</dt><dd>#{{ payment.job_id }}</dd></div><div><dt>Amount</dt><dd>Rs {{ '%.2f'|format(payment.amount) }}</dd></div><div><dt>Platform fee</dt><dd>Rs {{ '%.2f'|format(payment.platform_fee) }}</dd></div><div><dt>Status</dt><dd>{{ payment.status }}</dd></div><div><dt>Refund status</dt><dd>{{ payment.refund_status }}</dd></div><div><dt>Provider</dt><dd>{{ payment.provider }}</dd></div>{% if payment.gateway_order_id %}<div><dt>Gateway order</dt><dd>{{ payment.gateway_order_id }}</dd></div>{% endif %}</dl>
+{% if checkout_enabled %}<section class="form-panel checkout-panel"><p class="eyebrow">RAZORPAY {{ 'TEST MODE' if checkout_mode == 'razorpay_test' else 'LIVE PAYMENTS' }}</p><h2>{{ 'Sandbox checkout' if checkout_mode == 'razorpay_test' else 'Secure checkout' }}</h2><p>{% if checkout_mode == 'razorpay_test' %}This test payment does not move real money. Razorpay will confirm the transaction before NammaBiz marks it paid.{% else %}Razorpay will confirm the transaction before NammaBiz marks it paid.{% endif %}</p><button class="button dark" id="razorpay-checkout">Pay Rs {{ '%.2f'|format(payment.amount) }}</button><p id="checkout-message" role="status" aria-live="polite"></p></section><script src="https://checkout.razorpay.com/v1/checkout.js"></script><script>
+const checkoutButton = document.getElementById('razorpay-checkout');
+checkoutButton.addEventListener('click', () => {
+	const checkout = new Razorpay({
+		key: {{ razorpay_key_id|tojson }},
+		amount: {{ amount_paise }},
+		currency: 'INR',
+		name: 'NammaBiz',
+		description: 'Job #{{ payment.job_id }}',
+		order_id: {{ payment.gateway_order_id|tojson }},
+		prefill: { email: {{ current_user.email|tojson }} },
+		handler: async (result) => {
+			const response = await fetch('/payments/{{ payment.id }}/verify', {
+				method: 'POST',
+				headers: {'Content-Type': 'application/json', 'X-CSRFToken': {{ csrf_token()|tojson }}, 'Accept': 'application/json'},
+				body: JSON.stringify(result)
+			});
+			const confirmation = await response.json();
+			if (response.ok && confirmation.verified) {
+				window.location.reload();
+			} else {
+				document.getElementById('checkout-message').textContent = confirmation.message || 'Payment is not yet confirmed. Refresh this page to check its status.';
+			}
+		},
+		modal: {ondismiss: () => { document.getElementById('checkout-message').textContent = 'Checkout closed. This payment is still pending.'; }}
+	});
+	checkout.open();
+});
+</script>{% elif payment.status == 'PENDING' %}<p>{% if payment.provider == 'UNCONFIGURED' %}Sandbox checkout is disabled. Configure Razorpay test credentials to enable payment.{% else %}Checkout is unavailable until the configured gateway can be reached.{% endif %}</p>{% elif payment.status == 'SUCCESS' %}<p class="flash success">Payment captured by {{ payment.provider }}. Transaction ID: {{ payment.transaction_id }}.</p>{% endif %}</main>{% endblock %}

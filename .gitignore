@@ -16,6 +16,7 @@ data/
 .env
 .env.*
 *.log
+uploads/
 
 # IDE and operating-system files
 .idea/

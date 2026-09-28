@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Request #{{ item.id }} | NammaBiz{% endblock %}
+{% block content %}
+<main class="shell page">
+	<p class="crumb"><a href="{{ '/contractor/requests' if contractor_view else '/user/requests' }}">Requests</a> / #{{ item.id }}</p>
+	<section class="profile-head"><div><p class="eyebrow">{{ item.service.category.name }} / {{ item.service.name }}</p><h1>Request #{{ item.id }}</h1><p>{{ item.status.replace('_',' ').title() }} · {{ item.location }} · {{ item.urgency.title() }}</p></div></section>
+	<section class="content"><h2>Work details</h2><p>{{ item.description }}</p><p>{{ item.requirements }}</p><p>Budget: {{ item.budget or 'Not specified' }} · Preferred: {{ item.preferred_at or 'Flexible' }}</p>
+		{% if item.photos %}<h3>Photos</h3>{% for photo in item.photos %}<a class="text-link" href="/jobs/request-photos/{{ photo.id }}">{{ photo.original_name }}</a>{% endfor %}{% endif %}
+		{% if item.contractor %}<p>Contractor: {{ item.contractor.business_name }} · {{ item.contractor.user.name }}</p>{% endif %}
+		{% if item.job %}<p>Scheduled: {{ item.job.scheduled_start or 'Not scheduled' }}{% if item.job.agreed_amount %} · Agreed amount: Rs {{ item.job.agreed_amount }}{% endif %}</p>{% endif %}
+	</section>
+	{% if item.job %}
+	<section class="dash-section"><p class="eyebrow">JOB MESSAGES</p><h2>Customer and contractor</h2>
+		<div class="message-list">{% for message in item.job.messages %}<article><strong>{{ message.sender.name }}</strong><p>{{ message.body }}</p><small>{{ message.sent_at }}</small></article>{% else %}<p class="subtle">No messages yet.</p>{% endfor %}</div>
+		{% if current_user.role in ['USER', 'CONTRACTOR'] %}<form class="form-panel" method="post" action="/jobs/{{ item.id }}/messages"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Message<textarea name="body" required maxlength="4000"></textarea></label><button class="button dark">Send message</button></form>{% endif %}
+	</section>
+	{% endif %}
+	{% if contractor_view %}
+		{% if item.status == 'CONTRACTOR_ACCEPTED' %}<section class="form-panel"><h2>Schedule this job</h2><form method="post" action="/contractor/jobs/{{ item.id }}/schedule"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Date and start time<input name="starts_at" type="datetime-local" required></label><button class="button dark">Schedule</button></form></section>
+		{% elif item.status == 'SCHEDULED' %}<form method="post" action="/contractor/jobs/{{ item.id }}/status"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="IN_PROGRESS"><button class="button dark">Start work</button></form>
+		{% elif item.status == 'IN_PROGRESS' %}<section class="form-panel"><form method="post" action="/contractor/jobs/{{ item.id }}/status"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="COMPLETED"><label>Final agreed amount<input name="amount" type="number" min="0.01" step="0.01" required></label><button class="button dark">Mark completed</button></form></section>{% endif %}
+	{% endif %}
+	{% if current_user.role == 'USER' %}{% if item.status in ['PENDING','CONTRACTOR_ACCEPTED'] %}<form method="post" action="/user/requests/{{ item.id }}/cancel"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button">Cancel request</button></form>{% endif %}{% if item.status == 'COMPLETED' %}<a class="button accent" href="/reviews/">Leave a review</a>{% if item.job %}{% set payment = item.job.payments|first %}{% if payment %}<a class="text-link" href="/payments/{{ payment.id }}">Payment record: {{ payment.status.title() }}</a>{% else %}<form method="post" action="/user/jobs/{{ item.job.id }}/payment"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button dark">Create payment record</button></form>{% endif %}{% endif %}{% endif %}{% endif %}
+	{% if item.job and item.status not in ['PENDING','CANCELLED','REJECTED'] %}<section class="form-panel"><h2>Report an issue</h2><form method="post" action="/jobs/{{ item.id }}/complaints" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Issue type<select name="reason"><option value="POOR_SERVICE">Poor service</option><option value="INCOMPLETE_WORK">Incomplete work</option><option value="PAYMENT_PROBLEM">Payment problem</option><option value="CONTRACTOR_ISSUE">Contractor issue</option><option value="CUSTOMER_ISSUE">Customer issue</option><option value="OTHER">Other</option></select></label><label>Details<textarea name="details" required maxlength="5000"></textarea></label><label>Evidence files<input type="file" name="evidence" multiple accept="application/pdf,image/jpeg,image/png,image/webp"></label><button class="button dark">Submit complaint</button></form></section>{% endif %}
+</main>
+{% endblock %}

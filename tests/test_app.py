@@ -45,6 +45,14 @@ class NammaBizTests(unittest.TestCase):
         self.assertEqual(response["status"], "302 Found")
         self.assertEqual(len(self.app.rows("SELECT * FROM rfqs")), 0)
 
+    def test_rfq_api_reports_validation_results_accurately(self):
+        response, body = self.request("/api/rfqs", "POST", b'{"business_id":999,"buyer_name":"Ravi","buyer_email":"ravi@example.com","requirement":"Need enough detail for a quote"}', "application/json")
+        self.assertEqual(response["status"], "400 Bad Request")
+        self.assertFalse(json.loads(body)["created"])
+        response, body = self.request("/api/rfqs", "POST", b'{"business_id":1,"buyer_name":"Ravi","buyer_email":"ravi@example.com","requirement":"Need enough detail for a quote"}', "application/json")
+        self.assertEqual(response["status"], "201 Created")
+        self.assertTrue(json.loads(body)["created"])
+
     def test_estimator_calculates_construction_and_fabrication_ranges(self):
         construction = self.app.estimate("construction", {"area": ["1200"], "quality": ["standard"]})
         fabrication = self.app.estimate("fabrication", {"width": ["12"], "height": ["7"], "kind": ["gate"]})

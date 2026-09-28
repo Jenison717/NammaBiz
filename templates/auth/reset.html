@@ -1,0 +1,2 @@
+{% extends 'base.html' %}{% block title %}Choose a new password | NammaBiz{% endblock %}{% block content %}
+<main class="shell page auth-page"><section class="auth-panel"><p class="eyebrow">ACCOUNT RECOVERY</p><h1>Choose a new password</h1><form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>New password<input name="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label><button class="button dark">Update password</button></form></section></main>{% endblock %}

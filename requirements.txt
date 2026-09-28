@@ -1,3 +1,10 @@
-# The application code uses the Python standard library.
-# Gunicorn provides the production WSGI server used by Render.
+# Flask keeps the HTTP layer compatible with the existing WSGI deployment.
+Flask>=3.0,<4
+Flask-Login>=0.6,<1
+Flask-Migrate>=4.0,<5
+Flask-SQLAlchemy>=3.1,<4
+Flask-WTF>=1.2,<2
+psycopg[binary]>=3.2,<4
+razorpay>=1.4.2,<2
+setuptools<81
 gunicorn
