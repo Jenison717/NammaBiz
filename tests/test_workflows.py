@@ -37,8 +37,10 @@ class WorkflowTests(unittest.TestCase):
         with self.app.app_context():
             admin = self.make_user("Admin", "admin@example.test", "ADMIN")
             provider_user = self.make_user("Provider", "reviewed-provider@example.test", "CONTRACTOR")
+            incomplete_user = self.make_user("Incomplete Provider", "incomplete-provider@example.test", "CONTRACTOR")
             provider = Contractor(user=provider_user, business_name="Pending Provider")
-            db.session.add(provider)
+            incomplete_provider = Contractor(user=incomplete_user, business_name="Incomplete Provider")
+            db.session.add_all([provider, incomplete_provider])
             db.session.flush()
             db.session.add_all([
                 ContractorDocument(contractor_id=provider.id, kind="IDENTITY", stored_name="identity.pdf", original_name="identity.pdf"),
@@ -46,8 +48,18 @@ class WorkflowTests(unittest.TestCase):
             ])
             db.session.commit()
             provider_id = provider.id
+            incomplete_provider_id = incomplete_provider.id
         response = self.client.post("/admin/login", data={"email": "admin@example.test", "password": "long-test-password"}, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
+        review_page = self.client.get(f"/admin/contractors/{incomplete_provider_id}/verification")
+        self.assertEqual(review_page.status_code, 200)
+        self.assertIn(b"/contractor/verification", review_page.data)
+        self.assertIn(b"Both identity and business documents must be submitted", review_page.data)
+        self.assertNotIn(b'value="APPROVED"', review_page.data)
+        response = self.client.post(f"/admin/contractors/{incomplete_provider_id}/review", data={"decision": "APPROVED"}, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            self.assertEqual(db.session.get(Contractor, incomplete_provider_id).verification_status, "PENDING")
         paths = ["/admin/users", "/admin/contractors", "/admin/categories", "/admin/jobs", "/admin/payments", "/admin/revenue", "/admin/reviews", "/admin/complaints", "/admin/notifications", "/admin/reports", "/admin/settings"]
         for path in paths:
             with self.subTest(path=path):

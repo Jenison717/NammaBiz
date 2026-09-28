@@ -10,7 +10,7 @@ from extensions import db
 from models import AuditLog, Complaint, Contractor, ContractorDocument, Job, Notification, Payment, PlatformSetting, Review, Service, ServiceCategory, ServiceRequest, User
 from services.auth_service import send_reset_email
 from services.notification_service import job_notice
-from services.verification_service import review_contractor
+from services.verification_service import required_documents_submitted, review_contractor
 from utils.decorators import roles_required
 from utils.helpers import audit
 from utils.validators import valid_email, valid_password
@@ -108,7 +108,7 @@ def contractor_verification(contractor_id):
         abort(404)
     documents = ContractorDocument.query.filter_by(contractor_id=contractor.id).all()
     portfolio = PortfolioItem.query.filter_by(contractor_id=contractor.id).all()
-    return render_template("portal/admin_verification.html", contractor=contractor, documents=documents, portfolio=portfolio)
+    return render_template("portal/admin_verification.html", contractor=contractor, documents=documents, portfolio=portfolio, can_approve=required_documents_submitted(contractor))
 
 
 @admin.get("/documents/<int:document_id>")
