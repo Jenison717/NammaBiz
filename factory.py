@@ -11,6 +11,7 @@ from sqlalchemy import inspect
 from config import Config, ROOT, validate_config
 from extensions import csrf, db, login_manager, migrate
 from models import User
+from utils.validators import valid_email, valid_password
 
 
 @login_manager.user_loader
@@ -59,6 +60,8 @@ def create_platform_app(legacy_app, db_path=None):
             legacy_app.setup()
         if tables.has_table("service_categories"):
             _seed_service_catalog()
+        if tables.has_table("users"):
+            _provision_admin(app)
 
     app.extensions["legacy_marketplace"] = legacy_app
     def legacy_method(method):
@@ -100,10 +103,9 @@ def create_platform_app(legacy_app, db_path=None):
     from routes.payments import payments
     from routes.reviews import reviews
     from routes.services import services
-    from routes.setup import setup
     from routes.user import user
 
-    for blueprint in (auth, user, contractor, admin, services, jobs, payments, reviews, notifications, setup):
+    for blueprint in (auth, user, contractor, admin, services, jobs, payments, reviews, notifications):
         app.register_blueprint(blueprint)
 
     @app.route("/8489415717", methods=["GET", "POST"])
@@ -125,6 +127,23 @@ def create_platform_app(legacy_app, db_path=None):
 
     app.extensions["register_blueprint"] = app.register_blueprint
     return app
+
+
+def _provision_admin(app):
+    email = app.config.get("ADMIN_EMAIL", "").strip().lower()
+    password = app.config.get("ADMIN_PASSWORD", "")
+    if not email or not password:
+        return
+    if not valid_email(email) or not valid_password(password):
+        raise RuntimeError("ADMIN_EMAIL and ADMIN_PASSWORD must contain valid admin credentials.")
+    if User.query.filter_by(role="ADMIN").first():
+        return
+    if User.query.filter_by(email=email).first():
+        raise RuntimeError("ADMIN_EMAIL belongs to an existing non-admin account.")
+    admin = User(name=app.config.get("ADMIN_NAME", "NammaBiz Admin").strip()[:120], email=email, role="ADMIN")
+    admin.set_password(password)
+    db.session.add(admin)
+    db.session.commit()
 
 
 def _seed_service_catalog():

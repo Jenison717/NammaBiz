@@ -7,7 +7,7 @@ from unittest.mock import patch
 from app import create_app
 from config import Config
 from extensions import db
-from models import Contractor, ContractorService, PlatformSetting, Service, ServiceRequest, User
+from models import Contractor, ContractorService, Service, ServiceRequest, User
 from scripts.import_legacy_sqlite import import_legacy_records
 
 
@@ -28,37 +28,20 @@ class MarketplaceTests(unittest.TestCase):
             "password": "long-test-password",
         }, follow_redirects=True)
 
-    def test_first_run_setup_creates_one_admin_and_platform_fee_once(self):
-        response = self.client.get("/setup")
-        self.assertEqual(response.status_code, 200)
-        self.assertNotIn(b'href="/setup"', self.client.get("/auth/login").data)
-        response = self.client.post("/setup", data={
-            "name": "Initial Admin",
-            "email": "initial-admin@example.test",
-            "password": "initial-admin-password",
-            "platform_fee_percent": "7.5",
-        }, follow_redirects=True)
+    def test_admin_is_provisioned_from_environment_without_setup(self):
+        db_path = Path(self.temp.name) / "configured-admin.sqlite3"
+        with patch.object(Config, "ADMIN_EMAIL", "jenison717@gmail.com"), patch.object(Config, "ADMIN_PASSWORD", "long-test-password"), patch.object(Config, "ADMIN_NAME", "NammaBiz Admin"):
+            app = create_app(db_path)
+        client = app.test_client()
+        self.assertEqual(client.get("/setup").status_code, 404)
+        response = client.post("/8489415717", data={"email": "jenison717@gmail.com", "password": "long-test-password"}, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Marketplace overview", response.data)
-        self.assertNotIn(b"href=\"/setup\"", response.data)
-        with self.app.app_context():
-            admin = User.query.filter_by(email="initial-admin@example.test").one()
+        with app.app_context():
+            admin = User.query.filter_by(email="jenison717@gmail.com").one()
             self.assertEqual(admin.role, "ADMIN")
-            self.assertTrue(admin.check_password("initial-admin-password"))
-            self.assertEqual(User.query.filter_by(role="ADMIN").count(), 1)
-            self.assertEqual(db.session.get(PlatformSetting, "platform_fee_percent").value, "7.5")
-        self.assertEqual(self.client.get("/setup").status_code, 302)
-        self.client.post("/auth/logout")
-        self.assertNotIn(b"href=\"/setup\"", self.client.get("/auth/login").data)
+            self.assertTrue(admin.check_password("long-test-password"))
 
-    def test_first_run_setup_is_hidden_from_production_and_remote_clients(self):
-        response = self.client.get("/setup", environ_overrides={"REMOTE_ADDR": "10.0.0.8"})
-        self.assertEqual(response.status_code, 404)
-        self.app.config["FLASK_ENV"] = "production"
-        try:
-            self.assertEqual(self.client.get("/setup").status_code, 404)
-        finally:
-            self.app.config["FLASK_ENV"] = "development"
 
     def test_customer_registration_hashes_password_and_blocks_other_roles(self):
         response = self.register_customer()

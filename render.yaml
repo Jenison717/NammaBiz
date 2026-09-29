@@ -19,6 +19,12 @@ services:
         value: false
       - key: SEED_SAMPLE_DATA
         value: false
+      - key: ADMIN_EMAIL
+        value: jenison717@gmail.com
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NAME
+        value: NammaBiz Admin
 
 databases:
   - name: nammabiz-db

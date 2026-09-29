@@ -18,6 +18,9 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     AUTO_CREATE_DB = os.environ.get("AUTO_CREATE_DB", "true").lower() == "true"
     SEED_SAMPLE_DATA = os.environ.get("SEED_SAMPLE_DATA", "false" if FLASK_ENV == "production" else "true").lower() == "true"
+    ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
+    ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+    ADMIN_NAME = os.environ.get("ADMIN_NAME", "NammaBiz Admin")
     MAX_CONTENT_LENGTH = 8 * 1024 * 1024
     UPLOAD_ROOT = Path(os.environ.get("UPLOAD_ROOT", ROOT / "uploads"))
     SESSION_COOKIE_HTTPONLY = True
@@ -41,3 +44,5 @@ class Config:
 def validate_config(app):
     if app.config.get("FLASK_ENV") == "production" and app.config["SECRET_KEY"] == "local-development-only-change-me":
         raise RuntimeError("Set SECRET_KEY in the production environment.")
+    if app.config.get("FLASK_ENV") == "production" and (not app.config.get("ADMIN_EMAIL") or not app.config.get("ADMIN_PASSWORD")):
+        raise RuntimeError("Set ADMIN_EMAIL and ADMIN_PASSWORD in the production environment.")
