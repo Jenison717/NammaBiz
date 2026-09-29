@@ -51,6 +51,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(review_page.status_code, 200)
         self.assertIn(b"Review the contractor profile", review_page.data)
         self.assertIn(b"Record decision", review_page.data)
+        contractors_page = self.client.get("/admin/contractors")
+        self.assertIn(b">Approve</button>", contractors_page.data)
         self.assertIn(b'value="APPROVED"', review_page.data)
         response = self.client.post(f"/admin/contractors/{incomplete_provider_id}/review", data={"decision": "APPROVED"}, follow_redirects=True)
         self.assertEqual(response.status_code, 200)

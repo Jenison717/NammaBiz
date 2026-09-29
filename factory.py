@@ -110,7 +110,7 @@ def create_platform_app(legacy_app, db_path=None):
 
     @app.route("/8489415717", methods=["GET", "POST"])
     def private_admin_login():
-        """Admin login entry point used by the public navigation tab."""
+        """Unlisted admin login entry point."""
         from routes.admin import login as admin_login
 
         return admin_login()
