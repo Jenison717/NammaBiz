@@ -126,7 +126,8 @@ class NammaBiz:
         else:
             account_links = link("/auth/login", "Sign in", "login")
             join_link = '<a class="button dark" href="/auth/register">Join NammaBiz</a>'
-        return f'<header class="topbar"><div class="shell nav"><a class="brand" href="/"><b>N</b><span>NammaBiz<small>LOCAL SERVICES & SUPPLY</small></span></a><nav>{link("/", "Suppliers", "discover")}{link("/categories", "Categories", "categories")}{link("/services", "Services", "services")}{link("/estimator", "Estimator", "estimator")}{account_links}</nav>{join_link}</div></header>'
+        admin_link = link("/8489415717", "Admin", "admin")
+        return f'<header class="topbar"><div class="shell nav"><a class="brand" href="/"><b>N</b><span>NammaBiz<small>LOCAL SERVICES & SUPPLY</small></span></a><nav>{link("/", "Suppliers", "discover")}{link("/categories", "Categories", "categories")}{link("/services", "Services", "services")}{link("/estimator", "Estimator", "estimator")}{admin_link}{account_links}</nav>{join_link}</div></header>'
 
     def card(self, row):
         tags = pill("Available now", "success") if row["available"] else pill("Currently busy")

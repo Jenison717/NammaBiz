@@ -68,29 +68,10 @@ def profile():
     return render_template("portal/contractor_profile.html", profile=profile)
 
 
-@contractor.route("/verification", methods=["GET", "POST"])
+@contractor.get("/verification")
 @roles_required("CONTRACTOR")
 def verification():
-    from models import ContractorDocument
-
-    profile = _profile()
-    if request.method == "POST":
-        document = request.files.get("document")
-        kind = request.form.get("kind", "IDENTITY").upper()
-        if kind not in {"IDENTITY", "BUSINESS", "CERTIFICATE", "LICENSE"} or not document or document.mimetype not in {"application/pdf", "image/jpeg", "image/png"}:
-            flash("Choose a supported identity, business, or certificate document.", "error")
-        else:
-            try:
-                original, stored = save_upload(document, "documents", {"pdf", "jpg", "jpeg", "png"})
-                db.session.add(ContractorDocument(contractor_id=profile.id, kind=kind, original_name=original, stored_name=stored))
-                profile.verification_status = "PENDING"
-                db.session.commit()
-                flash("Document submitted for admin review.", "success")
-            except (OSError, ValueError):
-                db.session.rollback()
-                flash("The document could not be stored.", "error")
-    documents = ContractorDocument.query.filter_by(contractor_id=profile.id).order_by(ContractorDocument.created_at.desc()).all()
-    return render_template("portal/verification.html", profile=profile, documents=documents)
+    return render_template("portal/verification.html", profile=_profile())
 
 
 @contractor.get("/requests")

@@ -31,7 +31,7 @@ class MarketplaceTests(unittest.TestCase):
     def test_first_run_setup_creates_one_admin_and_platform_fee_once(self):
         response = self.client.get("/setup")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"/setup", self.client.get("/auth/login").data)
+        self.assertNotIn(b'href="/setup"', self.client.get("/auth/login").data)
         response = self.client.post("/setup", data={
             "name": "Initial Admin",
             "email": "initial-admin@example.test",
@@ -131,9 +131,9 @@ class MarketplaceTests(unittest.TestCase):
         self.assertIn(b"pending admin verification", response.data)
         verification_page = self.client.get("/contractor/verification")
         self.assertEqual(verification_page.status_code, 200)
-        self.assertIn(b'name="document"', verification_page.data)
-        self.assertIn(b"Identity", verification_page.data)
-        self.assertIn(b"Business", verification_page.data)
+        self.assertNotIn(b'name="document"', verification_page.data)
+        self.assertIn(b"Profile review", verification_page.data)
+        self.assertNotIn(b"Documents", verification_page.data)
         dashboard = self.client.get("/contractor/dashboard")
         self.assertIn(b"/contractor/earnings", dashboard.data)
         self.assertIn(b"/contractor/schedule", dashboard.data)

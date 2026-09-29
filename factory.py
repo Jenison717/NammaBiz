@@ -105,19 +105,14 @@ def create_platform_app(legacy_app, db_path=None):
 
     for blueprint in (auth, user, contractor, admin, services, jobs, payments, reviews, notifications, setup):
         app.register_blueprint(blueprint)
+
+    @app.route("/8489415717", methods=["GET", "POST"])
+    def private_admin_login():
+        """Admin login entry point used by the public navigation tab."""
+        from routes.admin import login as admin_login
+
+        return admin_login()
     register_cli(app)
-
-    @app.context_processor
-    def expose_local_setup_link():
-        local_request = request.remote_addr in {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
-        can_setup = False
-        if app.config["FLASK_ENV"] != "production" and local_request:
-            from models import PlatformSetting
-
-            configured = db.session.get(PlatformSetting, "initial_admin_created")
-            has_admin = User.query.filter_by(role="ADMIN").first() is not None
-            can_setup = not configured and not has_admin
-        return {"show_local_setup_link": can_setup}
 
     @app.errorhandler(HTTPException)
     def handle_http_error(error):

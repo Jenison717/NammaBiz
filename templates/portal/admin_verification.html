@@ -2,14 +2,24 @@
 {% block title %}Verification review | NammaBiz{% endblock %}
 {% block content %}
 <main class="shell page">
-	<div class="page-head"><p class="eyebrow">CONTRACTOR VERIFICATION</p><h1>{{ contractor.business_name }}</h1><p>{{ contractor.user.name }} · {{ contractor.user.email }} · {{ contractor.verification_status }}</p><p>{{ contractor.address }}, {{ contractor.city }} {{ contractor.pincode }}</p><p>Skills: {{ contractor.skills }}</p></div>
-	<h2>Documents</h2>
-	<div class="table-wrap"><table><thead><tr><th>Document</th><th>Type</th><th>Status</th><th>Review</th></tr></thead><tbody>{% for doc in documents %}<tr><td><a href="/admin/documents/{{ doc.id }}">{{ doc.original_name }}</a></td><td>{{ doc.kind }}</td><td>{{ doc.status }}</td><td>{{ doc.review_note }}</td></tr>{% else %}<tr><td colspan="4">No documents submitted.</td></tr>{% endfor %}</tbody></table></div>
-	{% if can_approve %}
-	<section class="form-panel"><h2>Record decision</h2><form method="post" action="/admin/contractors/{{ contractor.id }}/review"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Decision<select name="decision"><option value="APPROVED">Approve</option><option value="REJECTED">Reject</option></select></label><label>Review note<textarea name="note" maxlength="500"></textarea></label><button class="button dark">Save decision</button></form></section>
-	{% else %}
-	<section class="form-panel"><h2>Documents required before approval</h2><p>Both identity and business documents must be submitted before this contractor can be approved.</p><p>Ask the contractor to sign in to their contractor account and open <strong>Workspace → Verification</strong> (or visit <code>/contractor/verification</code>). This admin page reviews uploads; it does not upload documents for the contractor.</p><form method="post" action="/admin/contractors/{{ contractor.id }}/review"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="decision" value="REJECTED"><label>Review note<textarea name="note" maxlength="500"></textarea></label><button class="button">Reject verification</button></form></section>
-	{% endif %}
-	<h2>Portfolio</h2>{% for item in portfolio %}<p>{{ item.title }} · {{ item.description }}</p>{% else %}<p class="subtle">No portfolio submitted.</p>{% endfor %}
+  <div class="page-head">
+    <p class="eyebrow">CONTRACTOR VERIFICATION</p>
+    <h1>{{ contractor.business_name }}</h1>
+    <p>{{ contractor.user.name }} · {{ contractor.user.email }} · {{ contractor.verification_status }}</p>
+    <p>{{ contractor.address }}, {{ contractor.city }} {{ contractor.pincode }}</p>
+    <p>Skills: {{ contractor.skills }}</p>
+  </div>
+  <section class="form-panel">
+    <h2>Record decision</h2>
+    <p>Review the contractor profile and portfolio, then approve or reject the account.</p>
+    <form method="post" action="/admin/contractors/{{ contractor.id }}/review">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Decision<select name="decision"><option value="APPROVED">Approve</option><option value="REJECTED">Reject</option></select></label>
+      <label>Review note<textarea name="note" maxlength="500"></textarea></label>
+      <button class="button dark">Save decision</button>
+    </form>
+  </section>
+  <h2>Portfolio</h2>
+  {% for item in portfolio %}<p>{{ item.title }} · {{ item.description }}</p>{% else %}<p class="subtle">No portfolio submitted.</p>{% endfor %}
 </main>
 {% endblock %}

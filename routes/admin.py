@@ -7,10 +7,10 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from flask_login import current_user, login_user
 
 from extensions import db
-from models import AuditLog, Complaint, Contractor, ContractorDocument, Job, Notification, Payment, PlatformSetting, Review, Service, ServiceCategory, ServiceRequest, User
+from models import AuditLog, Complaint, Contractor, Job, Notification, Payment, PlatformSetting, Review, Service, ServiceCategory, ServiceRequest, User
 from services.auth_service import send_reset_email
 from services.notification_service import job_notice
-from services.verification_service import required_documents_submitted, review_contractor
+from services.verification_service import review_contractor
 from utils.decorators import roles_required
 from utils.helpers import audit
 from utils.validators import valid_email, valid_password
@@ -26,7 +26,7 @@ def login():
     if request.method == "POST":
         user = User.query.filter_by(email=request.form.get("email", "").strip().lower()).first()
         if user and user.active and user.role == "ADMIN" and user.check_password(request.form.get("password", "")):
-            login_user(user)
+            login_user(user, remember=request.form.get("remember") == "1")
             return redirect(url_for("admin.dashboard"))
         flash("Admin credentials were not accepted.", "error")
     return render_template("auth/login.html", admin_login=True)
@@ -106,20 +106,8 @@ def contractor_verification(contractor_id):
     contractor = db.session.get(Contractor, contractor_id)
     if not contractor:
         abort(404)
-    documents = ContractorDocument.query.filter_by(contractor_id=contractor.id).all()
     portfolio = PortfolioItem.query.filter_by(contractor_id=contractor.id).all()
-    return render_template("portal/admin_verification.html", contractor=contractor, documents=documents, portfolio=portfolio, can_approve=required_documents_submitted(contractor))
-
-
-@admin.get("/documents/<int:document_id>")
-@roles_required("ADMIN")
-def document(document_id):
-    from flask import current_app, send_from_directory
-
-    item = db.session.get(ContractorDocument, document_id)
-    if not item:
-        abort(404)
-    return send_from_directory(current_app.config["UPLOAD_ROOT"] / "documents", item.stored_name, as_attachment=True, download_name=item.original_name)
+    return render_template("portal/admin_verification.html", contractor=contractor, portfolio=portfolio)
 
 
 @admin.post("/contractors/<int:contractor_id>/review")
