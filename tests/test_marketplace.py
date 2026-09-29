@@ -50,6 +50,13 @@ class MarketplaceTests(unittest.TestCase):
             self.assertEqual(admin.role, "ADMIN")
             self.assertTrue(admin.check_password("long-test-password"))
 
+        with patch.object(Config, "ADMIN_EMAIL", "jenison717@gmail.com"), patch.object(Config, "ADMIN_PASSWORD", "new-long-password"), patch.object(Config, "ADMIN_NAME", "NammaBiz Admin"):
+            restarted_app = create_app(db_path)
+        restarted_client = restarted_app.test_client()
+        response = restarted_client.post("/8489415717", data={"email": "jenison717@gmail.com", "password": "new-long-password"}, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Marketplace overview", response.data)
+
 
     def test_customer_registration_hashes_password_and_blocks_other_roles(self):
         response = self.register_customer()

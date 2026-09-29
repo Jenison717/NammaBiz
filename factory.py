@@ -136,10 +136,16 @@ def _provision_admin(app):
         return
     if not valid_email(email) or not valid_password(password):
         raise RuntimeError("ADMIN_EMAIL and ADMIN_PASSWORD must contain valid admin credentials.")
+    existing = User.query.filter_by(email=email).first()
+    if existing:
+        if existing.role != "ADMIN":
+            raise RuntimeError("ADMIN_EMAIL belongs to an existing non-admin account.")
+        if not existing.check_password(password):
+            existing.set_password(password)
+            db.session.commit()
+        return
     if User.query.filter_by(role="ADMIN").first():
         return
-    if User.query.filter_by(email=email).first():
-        raise RuntimeError("ADMIN_EMAIL belongs to an existing non-admin account.")
     admin = User(name=app.config.get("ADMIN_NAME", "NammaBiz Admin").strip()[:120], email=email, role="ADMIN")
     admin.set_password(password)
     db.session.add(admin)
